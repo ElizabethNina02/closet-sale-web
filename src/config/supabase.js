@@ -1,0 +1,11 @@
+// src/config/supabase.js
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("⚠️ Error: Faltan las variables de entorno de Supabase en el archivo .env");
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
