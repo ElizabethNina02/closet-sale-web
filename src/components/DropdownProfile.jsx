@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Transition from '../utils/Transition';
 
 
@@ -32,6 +32,21 @@ function DropdownProfile({
     document.addEventListener('keydown', keyHandler);
     return () => document.removeEventListener('keydown', keyHandler);
   });
+
+
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // 1. Borramos las credenciales reales de Spring Boot
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+
+    // 2. Cerramos el menú desplegable
+    setDropdownOpen(false);
+
+    // 3. Redirigimos de forma segura a la página de login
+    navigate('/login');
+  };
 
   return (
     <div className="relative inline-flex">
@@ -83,8 +98,8 @@ function DropdownProfile({
             <li>
               <Link
                 className="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3"
-                to="/signin"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
+                to="/login"
+                onClick={handleLogout}
               >
                 Sign Out
               </Link>

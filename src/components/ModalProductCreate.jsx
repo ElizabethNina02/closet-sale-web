@@ -16,7 +16,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { uploadMultipleImagesAndGetUrls } from "@/services/StorageService";
 
 
-export function DialogDemo() {
+export function ModalProductCreate() {
     const { 
     register, 
     handleSubmit,

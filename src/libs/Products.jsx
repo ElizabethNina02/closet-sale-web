@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { DialogDemo } from "@/components/ModalProductCreate";
+import { ModalProductCreate } from "@/components/ModalProductCreate";
 import { Spinner } from "@/components/ui/spinner";
 import { productService } from "@/services/ProductService";
+import { ModalProductEdit } from "@/components/ModalProductEdit";
 
 function Products() {
   
+const [isModalOpen, setIsModalOpen] = useState(false);
+const [selectedProductId, setSelectedProductId] = useState(null);
 
-  
     const [products, setProducts] = useState([]);
 
     const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ useEffect(() => {
           </p>
         </div>
 
-        <DialogDemo />
+        <ModalProductCreate />
       </div>
     
       {/* Grid contenedor que renderiza tus tarjetas */}
@@ -49,8 +51,11 @@ useEffect(() => {
         {products.map((product) => (
           /* Tu tarjeta personalizada adaptada a React y Tailwind v4 */
           <div 
-            key={product.id} 
-            className="max-w-sm rounded-xl overflow-hidden shadow-lg bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex flex-col justify-between"
+            key={product.id} onClick={() => {
+              setSelectedProductId(product.id);  // Guardamos la info del producto para el formulario
+              setIsModalOpen(true);        // Abrimos el modal instantáneamente
+            }}
+            className="max-w-sm hover:underline cursor-pointer rounded-xl overflow-hidden shadow-lg bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex flex-col justify-between"
           >
             <div>
               {/* Imagen del Producto */}
@@ -79,10 +84,17 @@ useEffect(() => {
                 </p>
               </div>
             </div>
-
-          </div>
+            </div>
         ))}
-
+        <ModalProductEdit 
+          open={isModalOpen} 
+          onOpenChange={(isOpen) => {
+            setIsModalOpen(isOpen);
+            if (!isOpen) setSelectedProductId(null); // Al cerrar, limpiamos el ID
+          }} 
+          productId={selectedProductId} 
+        />
+        
         <div className="flex items-center gap-4">
           {loading && <Spinner />}
         </div>
