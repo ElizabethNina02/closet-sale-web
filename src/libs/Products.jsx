@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { ModalProductCreate } from "@/components/ModalProductCreate";
 import { Spinner } from "@/components/ui/spinner";
 import { productService } from "@/services/ProductService";
 import { ModalProductEdit } from "@/components/ModalProductEdit";
+import { Button } from "@/components/ui/button";
 
 function Products() {
   
@@ -12,22 +12,25 @@ const [selectedProductId, setSelectedProductId] = useState(null);
     const [products, setProducts] = useState([]);
 
     const [loading, setLoading] = useState(true);
-useEffect(() => {
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const data = await productService.getAllProducts();
-      
-      setProducts(data);
-    } catch (error) {
-      // Axios guarda la respuesta del servidor en error.response
-      console.error("Error cargando productos desde el servidor:", error.response?.data || error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchCategories = async () => {
+  try {
+    setLoading(true);
+    const data = await productService.getAllProducts();
+    setProducts(data);
+  } catch (error) {
+    console.error("Error cargando productos desde el servidor:", error.response?.data || error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  fetchCategories();
+// 2. CORRECCIÓN ESLINT: Envolvemos la llamada para aislar el flujo del ciclo del efecto
+useEffect(() => {
+  const initializeData = async () => {
+    await fetchCategories();
+  };
+  
+  initializeData();
 }, []);
 
   return (
@@ -42,8 +45,16 @@ useEffect(() => {
             Gestiona las prendas disponibles en tu closet sale.
           </p>
         </div>
-
-        <ModalProductCreate />
+        <Button 
+          className="bg-violet-700 hover:bg-violet-800"
+            onClick={() => 
+            {
+              setSelectedProductId(null);  // Guardamos la info del producto para el formulario
+              setIsModalOpen(true);        // Abrimos el modal instantáneamente
+            }
+        }>
+          Crear Producto
+        </Button>
       </div>
     
       {/* Grid contenedor que renderiza tus tarjetas */}
@@ -88,11 +99,12 @@ useEffect(() => {
         ))}
         <ModalProductEdit 
           open={isModalOpen} 
-          onOpenChange={(isOpen) => {
+          onOpenChange = {(isOpen) => {
             setIsModalOpen(isOpen);
-            if (!isOpen) setSelectedProductId(null); // Al cerrar, limpiamos el ID
+            if (!isOpen) setSelectedProductId(null);
           }} 
           productId={selectedProductId} 
+          onRefresh={fetchCategories} 
         />
         
         <div className="flex items-center gap-4">

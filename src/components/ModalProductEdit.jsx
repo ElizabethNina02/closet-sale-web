@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from './ui/select';
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Textarea } from "./ui/textarea";
 import { useEffect, useState } from "react";
 import { categoryService } from "@/services/CategoryService";
@@ -13,33 +13,34 @@ import { Attachment, AttachmentAction, AttachmentActions, AttachmentGroup, Attac
 import { XIcon } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "./ui/input-group";
 import { ScrollArea } from "./ui/scroll-area";
-import { uploadMultipleImagesAndGetUrls } from "@/services/StorageService";
+import { deleteMultipleImages, uploadMultipleImagesAndGetUrls } from "@/services/StorageService";
 
 
-export function ModalProductEdit({ open, onOpenChange,productId }) {
+export function ModalProductEdit({ open, onOpenChange,productId,onRefresh }) {
     
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedFiles, setSelectedFiles] = useState([]);
 
     const { 
-    register, 
-    handleSubmit,
-  setValue,    // <-- Agrega esto para actualizar valores manualmente
-  getValues, 
-  reset,
-    formState: { errors }, // Agregamos isSubmitting para controlar el botón
-  } = useForm({
-    mode: "onBlur",
-    defaultValues: {
-      vendedorId: 1,
-      titulo: '',
-      condicion: '',
-    descripcion: '', // 👈 DEBES AGREGARLA AQUÍ
-      precio: 0.0,
-      estado: '',
-      categoriaId: ''
-    }
-  });
+       register, 
+        handleSubmit,
+        reset,
+        control, // 🔑 Extrae el objeto 'control' aquí
+        setValue,
+        formState: { errors },  // Agregamos isSubmitting para controlar el botón
+    } = useForm({
+      mode: "onBlur",
+      defaultValues: {
+        vendedorId: 1,
+        titulo: '',
+        condicion: '',
+        descripcion: '', // 👈 DEBES AGREGARLA AQUÍ
+        precio: 0.00,
+        estado: '',
+        categoriaId: ''
+      }
+    });
 
    useEffect(() => {
     const fetchProductDetails = async () => {
@@ -51,13 +52,19 @@ export function ModalProductEdit({ open, onOpenChange,productId }) {
         // La petición a Spring Boot se ejecuta JUSTO AQUÍ al hacer clic
         const data = await productService.getProductById(productId);
         
+        setSelectedFiles(data.files);
+        const precioFormateado = data.precio ? parseFloat(data.precio).toFixed(2) : "0.00";
+
         // Mapeamos los datos del servidor a los inputs de React Hook Form
         reset({
-          titulo: data.nombre || '',
+          titulo: data.titulo || '',
           descripcion: data.descripcion || '',
-          precio: data.precio || 0.0,
+          precio: precioFormateado || 0.00,
           condicion: data.condicion || '',
-          estado: data.estado || ''
+          estado: data.estado || '',
+          categoriaId: data.categoriaId || ''
+        }, {
+          keepFocused: false, // 🔑 CLAVE: Fuerza a React Hook Form a reescribir el valor aunque tenga el foco nativo
         });
       } catch (error) {
         console.error("Error al cargar detalles bajo demanda:", error);
@@ -71,36 +78,35 @@ export function ModalProductEdit({ open, onOpenChange,productId }) {
 
 
 
-// Registramos el campo manualmente al iniciar el componente
-useEffect(() => {
-  register("condicion", { required: "La condición es obligatoria" });
-}, [register]);
-   // 4. useEffect para llamar a la API cuando el componente se cargue
+  // Registramos el campo manualmente al iniciar el componente
   useEffect(() => {
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const data = await categoryService.getAllCategories();
-      
-      const formattedCategories = data.map((category) => ({
-        label: category.nombre, 
-        value: String(category.id)
-      }));
+    register("condicion", { required: "La condición es obligatoria" });
+  }, [register]);
 
-      setCategories(formattedCategories);
-    } catch (error) {
-      // Axios guarda la respuesta del servidor en error.response
-      console.error("Error cargando categorías desde el servidor:", error.response?.data || error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // 4. useEffect para llamar a la API cuando el componente se cargue
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const data = await categoryService.getAllCategories();
+        
+        const formattedCategories = data.map((category) => ({
+          label: category.nombre, 
+          value: String(category.id)
+        }));
 
-  fetchCategories();
-}, []);
+        setCategories(formattedCategories);
+      } catch (error) {
+        // Axios guarda la respuesta del servidor en error.response
+        console.error("Error cargando categorías desde el servidor:", error.response?.data || error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
   // Estado para acumular todos los archivos cargados
-  const [selectedFiles, setSelectedFiles] = useState([]);
-
   const handleFileChange = (e) => {
   const files = e.target.files;
   if (files && files.length > 0) {
@@ -116,7 +122,7 @@ useEffect(() => {
       const filesWithPreviews = filteredNewFiles.map((file) => {
         // Generamos un objeto personalizado que hereda del archivo nativo
         return Object.assign(file, {
-          previewUrl: URL.createObjectURL(file), // <-- El enlace virtual para el src
+          url: URL.createObjectURL(file), // <-- El enlace virtual para el src
           meta: `${(file.size / 1024).toFixed(1)} KB` // Metadata automática para tu AttachmentDescription
         });
       });
@@ -134,25 +140,34 @@ useEffect(() => {
   };
 
 
+  const handlePrecioChange = (e) => {
+  const rawValue = e.target.value;
 
-const handlePrecioChange = (e) => {
-  const value = e.target.value;
-  const regex = /^\d*(\.\d{0,2})?$/;
+  // 1. Limpiamos todo lo que no sea un número dígito
+  const digitsOnly = rawValue.replace(/\D/g, "");
 
-  // Si cumple la regla o está vacío, actualizamos el valor en React Hook Form
-  if (regex.test(value) || value === "") {
-    setValue("precio", value); // <-- Reemplaza setProductData
+  // 2. Si el campo está vacío o se borró todo, dejamos que React Hook Form guarde "0.00"
+  if (!digitsOnly) {
+    setValue("precio", "0.00", { shouldValidate: true });
+    return;
+  }
+
+  // 3. Convertimos a número flotante dividiendo por 100 y forzamos el formato de 2 decimales
+  const formattedValue = (parseFloat(digitsOnly) / 100).toFixed(2);
+
+  // 4. Actualizamos manualmente el valor en React Hook Form en tiempo real
+  setValue("precio", formattedValue, { shouldValidate: true });
+};
+
+const handleBlurPrecio = (e) => {
+  const currentPrecio = e.target.value;
+
+  // Al salir del campo, si está vacío o incompleto, aseguramos el formato base
+  if (!currentPrecio || isNaN(parseFloat(currentPrecio))) {
+    setValue("precio", "0.00", { shouldValidate: true });
   }
 };
 
-const handleBlur = () => {
-  const currentPrecio = getValues("precio"); // <-- Reemplaza productData.precio
-
-  if (currentPrecio && !isNaN(currentPrecio)) {
-    // Formateamos a dos decimales y actualizamos el formulario
-    setValue("precio", parseFloat(currentPrecio).toFixed(2));
-  }
-};
 
   const condiciones = [
     { label: "Nuevo", value: "NUEVO" },
@@ -170,18 +185,45 @@ const handleBlur = () => {
 
    // 2. Esta función recibe los datos limpios y validados automáticamente
   const onSubmit = async (data) => {
-      alert('¡Cambios guardados con éxito!');
     try {
+
+      if(productId==null) {
         console.log(data);
-        const urlsDeImagenesPublicas = await uploadMultipleImagesAndGetUrls(selectedFiles, 'productos');
-        const arregloDeFiles = urlsDeImagenesPublicas.map((url, index) => ({
-          url: url,
-          order: index // El primer archivo tendrá 0, el segundo 1, etc.
+        const imagenesSubidas = await uploadMultipleImagesAndGetUrls(selectedFiles, 'productos');
+        const arregloDeFiles = imagenesSubidas.map((imagen, index) => ({
+          url: imagen.url,    // 🔑 Extrae la URL pública del objeto
+          fileOrder: index,         // El primer archivo tendrá 0, el segundo 1, etc.
+          uniqueName: imagen.uniqueName // 🔑 Asigna el nombre único para poder borrarlo en el futuro
         }));
         data.files=arregloDeFiles;
         const newProduct = await productService.createProduct(data);
-      console.log('Producto creado:', newProduct);
-      alert('¡Cambios guardados con éxito!');
+        console.log('Producto creado:', newProduct);
+        alert('¡Cambios guardados con éxito!');
+
+      } 
+        
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      alert('Hubo un error al guardar los cambios.');
+    }
+  };
+
+  const OnDelete = async () => {
+    try {
+
+        const resultadoDelete = await deleteMultipleImages(selectedFiles.map(m=>m.uniqueName))
+
+
+        console.log(resultadoDelete);
+        const newProduct = await productService.deleteProductById(productId);
+        console.log('Producto eliminado:', newProduct);
+        alert('¡Cambios eliminados con éxito!');
+
+         if (onRefresh) {
+          onRefresh(); 
+        }
+
+        
     } catch (error) {
       console.error('Error al guardar:', error);
       alert('Hubo un error al guardar los cambios.');
@@ -190,14 +232,11 @@ const handleBlur = () => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] md:max-w-5/6 max-h-[99vh]" 
-  onOpenAutoFocus={(e) => e.preventDefault()}
-  // 🔑 Bloquea que regrese el foco de forma agresiva al cerrar
-  onCloseAutoFocus={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-[95vw] md:max-w-5/6 max-h-[99vh]">
         <form  id="product-form" onSubmit={handleSubmit(onSubmit)}>
         <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
-              Editar artículo
+              {productId?'Editar':'Crear'} artículo
             </DialogTitle>
             <DialogDescription>
               Llena los campos a continuación para agregar un nuevo artículo a tu closet sale. Todos los campos son obligatorios, y puedes subir múltiples imágenes para mostrar tu prenda de la mejor manera posible.
@@ -215,9 +254,9 @@ const handleBlur = () => {
                     <div className="p-4">
                         <FieldGroup>
                                     <Field>
-                                    <FieldLabel htmlFor="name">Nombre del artículo</FieldLabel>
+                                    <FieldLabel htmlFor="titulo">Nombre del artículo</FieldLabel>
                                     <Input 
-                                            id="name" 
+                                            id="titulo" 
                                             placeholder="Ej: Casaca de mezclilla Levi's"
                                             {...register("titulo", { required: "El nombre es obligatorio" })}
                                             aria-invalid={errors.titulo ? "true" : "false"}
@@ -248,79 +287,143 @@ const handleBlur = () => {
                                     {/* 5. Reemplazamos las frutas por tus Categorías dinámicas */}
                                     <Field>
                                         <Label htmlFor="category-select">Categoría</Label>
-                                        <Select items={categories}   onValueChange={(value) => setValue("categoriaId", value, { shouldValidate: true })}>
-                                        <SelectTrigger id="category-select" className="w-full">
-                                            <SelectValue placeholder={loading ? "Cargando categorías..." : "Selecciona una categoría"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                            <SelectLabel>Categorías disponibles</SelectLabel>
-                                            {categories.map((category) => (
-                                                <SelectItem key={category.value} value={category.value}>
-                                                {category.label}
-                                                </SelectItem>
-                                            ))}
-                                            </SelectGroup>
-                                        </SelectContent>
-                                        </Select>
-                                    </Field>
-                                    <Field>
-                                        <Label htmlFor="category-select">Precio</Label>
-                                        <InputGroup>
-                                            <InputGroupAddon>
-                                            <InputGroupText>S/</InputGroupText>
-                                            </InputGroupAddon>
-                                            <InputGroupInput 
-                                                id="precio-input"
-                                                type="text" // Usamos 'text' para que el control de la RegEx sea 100% estricto e inmediato
-                                                inputMode="decimal" // Muestra el teclado numérico con punto en celulares
-                                                placeholder="0.00" 
-                                                onChange={handlePrecioChange}
-                                                onBlur={handleBlur}
-                                                />
-                                            <InputGroupAddon align="inline-end">
-                                            <InputGroupText>PEN</InputGroupText>
-                                            </InputGroupAddon>
-                                        </InputGroup>
-                                    </Field>
 
-                                    <Field>
-                                        <Label htmlFor="category-select">Condición</Label>
-                                        <Select items={condiciones}  onValueChange={(value) => setValue("condicion", value, { shouldValidate: true })}>
-                                        <SelectTrigger id="category-select" className="w-full">
-                                            <SelectValue placeholder={ "Selecciona una condición"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                            <SelectLabel>Condiciones disponibles</SelectLabel>
-                                            {condiciones.map((condicion) => (
-                                                <SelectItem key={condicion.value} value={condicion.value}>
-                                                {condicion.label}
-                                                </SelectItem>
-                                            ))}
-                                            </SelectGroup>
-                                        </SelectContent>
-                                        </Select>
+                                        <Controller
+                                        name="categoriaId"
+                                        control={control}
+                                        rules={{ required: "La categoría es obligatoria" }}
+                                        render={({ field }) => (
+                                          <Select 
+                                            // 🔑 SOLUCIÓN: Pasa el arreglo al componente raíz para que traduzca el VALUE a LABEL
+                                            items={categories} 
+                                            value={field.value || ""} 
+                                            onValueChange={field.onChange}
+                                            disabled={loading}
+                                          >
+                                            <SelectTrigger id="categoria-select" className="w-full">
+                                              {/* Radix ahora buscará de forma segura en 'items' la etiqueta correcta */}
+                                              <SelectValue placeholder="Selecciona una categoría" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectGroup>
+                                                <SelectLabel>Categorías disponibles</SelectLabel>
+                                                {categories.map((category) => (
+                                                  <SelectItem key={category.value} value={category.value}>
+                                                    {category.label}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectGroup>
+                                            </SelectContent>
+                                          </Select>
+                                        )}
+                                      />
                                     </Field>
 
 
                                     <Field>
-                                        <Label htmlFor="category-select">Estado</Label>
-                                        <Select items={estados}  onValueChange={(value) => setValue("estado", value, { shouldValidate: true })}>
-                                        <SelectTrigger id="category-select" className="w-full">
-                                            <SelectValue placeholder={ "Selecciona un estado"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                            <SelectLabel>Estados disponibles</SelectLabel>
-                                            {estados.map((estado) => (
-                                                <SelectItem key={estado.value} value={estado.value}>
-                                                {estado.label}
-                                                </SelectItem>
-                                            ))}
-                                            </SelectGroup>
-                                        </SelectContent>
-                                        </Select>
+                                      <Label htmlFor="precio-input">Precio</Label>
+                                      <InputGroup>
+                                        <InputGroupAddon>
+                                          <InputGroupText>S/</InputGroupText>
+                                        </InputGroupAddon>
+                                        
+                                        <InputGroupInput 
+                                          id="precio-input"
+                                          type="text" 
+                                          inputMode="decimal" 
+                                          placeholder={loading ? "Cargando..." : "0.00"}
+                                          disabled={loading}
+                                          {...register("precio", { 
+                                            required: "El precio es obligatorio",
+                                            // 🔑 Opcional: Evita que publiquen artículos gratis con valor "0.00"
+                                            validate: (value) => parseFloat(value) > 0 || "El precio debe ser mayor a 0.00",
+                                            onChange: handlePrecioChange, 
+                                            onBlur: handleBlurPrecio 
+                                          })}
+                                          aria-invalid={errors.precio ? "true" : "false"}
+                                        />
+                                        
+                                        <InputGroupAddon align="inline-end">
+                                          <InputGroupText>PEN</InputGroupText>
+                                        </InputGroupAddon>
+                                      </InputGroup>
+
+                                      {errors.precio && (
+                                        <p className="text-red-500 text-xs mt-1 transition-colors">
+                                          {errors.precio.message}
+                                        </p>
+                                      )}
+                                    </Field>
+
+
+
+                                    <Field>
+                                      <Label htmlFor="condicion-select">Condición</Label>
+                                      
+                                      <Controller
+                                        name="condicion"
+                                        control={control}
+                                        rules={{ required: "La condición es obligatoria" }}
+                                        render={({ field }) => (
+                                          <Select 
+                                            // 🔑 SOLUCIÓN: Pasa el arreglo al componente raíz para que traduzca el VALUE a LABEL
+                                            items={condiciones} 
+                                            value={field.value || ""} 
+                                            onValueChange={field.onChange}
+                                            disabled={loading}
+                                          >
+                                            <SelectTrigger id="condicion-select" className="w-full">
+                                              {/* Radix ahora buscará de forma segura en 'items' la etiqueta correcta */}
+                                              <SelectValue placeholder="Selecciona una condición" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectGroup>
+                                                <SelectLabel>Condiciones disponibles</SelectLabel>
+                                                {condiciones.map((condicion) => (
+                                                  <SelectItem key={condicion.value} value={condicion.value}>
+                                                    {condicion.label}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectGroup>
+                                            </SelectContent>
+                                          </Select>
+                                        )}
+                                      />
+
+                                    </Field>
+
+
+                                    <Field>
+                                        <Label htmlFor="estado-select">Estado</Label>
+
+                                        <Controller
+                                        name="estado"
+                                        control={control}
+                                        render={({ field }) => (
+                                          <Select 
+                                            // 🔑 SOLUCIÓN: Pasa el arreglo al componente raíz para que traduzca el VALUE a LABEL
+                                            items={estados} 
+                                            value={field.value || ""} 
+                                            onValueChange={field.onChange}
+                                            disabled={loading}
+                                          >
+                                            <SelectTrigger id="estado-select" className="w-full">
+                                              {/* Radix ahora buscará de forma segura en 'items' la etiqueta correcta */}
+                                              <SelectValue placeholder="Selecciona un estado" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectGroup>
+                                                <SelectLabel>Estados disponibles</SelectLabel>
+                                                {estados.map((estado) => (
+                                                  <SelectItem key={estado.value} value={estado.value}>
+                                                    {estado.label}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectGroup>
+                                            </SelectContent>
+                                          </Select>
+                                        )}
+                                      />
                                     </Field>
                                     
                                 </FieldGroup>
@@ -349,12 +452,12 @@ const handleBlur = () => {
 
                     <AttachmentGroup className="w-full scrollbar-auto overflow-auto" orientation="horizontal">
                         {selectedFiles.map((image, index) => (
-                        <Attachment key={`${image.name}-${index}`} orientation="vertical" className="size-60">
+                        <Attachment key={`${image.name}-${index}`} orientation="vertical" className="size-80">
                             <AttachmentMedia variant="image">
                             {/* Usamos previewUrl que contiene el Blob local */}
                             <img 
-                                src={image.previewUrl} 
-                                alt={image.name} 
+                                src={image.url} 
+                                alt={image.url} 
                                 className="object-cover w-full h-full" 
                             />
                             </AttachmentMedia>
@@ -391,11 +494,37 @@ const handleBlur = () => {
           
          
           <DialogFooter>
-            <DialogClose render={<Button variant="outline">Cancel</Button>} />
-            <Button form="product-form"  type="submit" className="bg-violet-700 hover:bg-violet-800">
-              Save changes
-            </Button>
+
+            {/* 👈 Condicional: El botón "Close" solo se renderiza si existe un productId */}
+            {productId ? (
+              <Button variant="destructive"  
+                onClick={() => 
+                  {
+                    OnDelete()       // Abrimos el modal instantáneamente
+                  }}>
+                Eliminar artículo
+              </Button>
+            ) : (
+              // 🔑 Opcional: Un div vacío mantiene el empuje flex a la derecha si no hay productId
+              <div className="hidden sm:block" /> 
+            )}
+            
+
+            <div className="flex items-center gap-5 w-full sm:w-auto sm:ml-auto">
+              <DialogClose  variant="ghost">
+                Cancelar
+              </DialogClose>
+              
+              <Button 
+                form="product-form"  
+                type="submit" 
+                className="bg-violet-700 hover:bg-violet-800"
+              >
+                Guardar
+              </Button>
+            </div>
           </DialogFooter>
+
         </form>
         </DialogContent>
       

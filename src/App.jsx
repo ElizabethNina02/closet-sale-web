@@ -29,7 +29,7 @@ function App() {
         {/* 🔒 RUTAS PROTEGIDAS: Se requiere token para acceder a todo lo que esté aquí dentro */}
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<HomePage />}>
-            <Route index element={<Products />} />
+            <Route index element={<Navigate to="/marketplace" replace />} />
             <Route path="my-products" element={<Products />} />
             <Route path="marketplace" element={<Marketplace />} />
             <Route path="marketplace/:id" element={<ProductDetail />} />
@@ -38,7 +38,7 @@ function App() {
 
         <Route 
           path="*" 
-          element={hasToken ? <Navigate to="/" replace /> : <Navigate to="/login" replace />} 
+          element={hasToken ? <Navigate to="/marketplace" replace /> : <Navigate to="/login" replace />} 
         />
       </Routes>
 

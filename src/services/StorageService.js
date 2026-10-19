@@ -4,8 +4,8 @@ import { supabase } from '../config/supabase';
  * Sube múltiples imágenes a Supabase Storage y retorna sus URLs públicas.
  * @param {File[]} files - Arreglo de archivos binarios (ej. [file1, file2, file3]).
  * @param {string} bucketName - Nombre del bucket.
- * @returns {Promise<string[]>} Un arreglo con las URLs públicas en formato texto.
- */
+ * @returns {Promise<Array<{publicUrl: string, uniqueName: string}>>} Un arreglo de objetos con las URLs y nombres únicos.
+  */
 export const uploadMultipleImagesAndGetUrls = async (files, bucketName = 'productos') => {
   try {
     // Procesamos todas las imágenes en paralelo de forma eficiente
@@ -31,7 +31,11 @@ export const uploadMultipleImagesAndGetUrls = async (files, bucketName = 'produc
         .from(bucketName)
         .getPublicUrl(uniqueName);
 
-      return publicUrlData.publicUrl;
+      // 🔑 RETORNO MODIFICADO: Devolvemos un objeto con ambos datos útiles
+      return {
+        url: publicUrlData.publicUrl,
+        uniqueName: uniqueName // Este es el path relativo exacto para usar en .remove()
+      };
     });
 
     // Espera a que todas las subidas terminen y retorna el array de URLs ['url1', 'url2', 'url3']
@@ -41,4 +45,36 @@ export const uploadMultipleImagesAndGetUrls = async (files, bucketName = 'produc
     console.error("Error en uploadMultipleImagesAndGetUrls:", error);
     throw error;
   }
+};
+
+/**
+ * Elimina múltiples imágenes de un bucket de Supabase Storage en una sola petición.
+ * 
+ * @param {string[]} uniqueNames - Arreglo con los nombres únicos (paths relativos) de los archivos.
+ * @param {string} bucketName - Nombre del bucket (por defecto 'productos').
+ */
+export const deleteMultipleImages = async (uniqueNames, bucketName = 'productos') => {
+  // Si el arreglo viene vacío, salimos de inmediato para ahorrar una petición al servidor
+  if (!uniqueNames || uniqueNames.length === 0) return;
+
+  try {
+    // 🔑 OPTIMIZACIÓN: Pasamos el arreglo completo directamente a .remove()
+    const { data, error: deleteError } = await supabase.storage
+      .from(bucketName)
+      .remove(uniqueNames);
+
+    if (deleteError) {
+      throw new Error(`Error de comunicación con Supabase: ${deleteError.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      console.warn("No se eliminó ningún archivo físico en Supabase. Revisa si los uniqueNames son correctos.");
+    } else {
+      console.log(`Se eliminaron con éxito ${data.length} archivos de Supabase.`);
+    }
+
+  } catch (error) {
+    console.error("Error en deleteMultipleImages:", error);
+    throw error;
+  } 
 };

@@ -16,5 +16,10 @@ export const productService = {
   getProductById: async (id) => {
     const response = await api.get(`/products/${id}`);
     return response.data;
+  },
+
+  deleteProductById: async (id) =>{
+    const response = await api.delete(`/products/${id}`);
+    return response;
   }
 };
