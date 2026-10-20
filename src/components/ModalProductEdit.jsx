@@ -21,6 +21,7 @@ export function ModalProductEdit({ open, onOpenChange,productId,onRefresh }) {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedFiles, setSelectedFiles] = useState([]);
+    const [originalSelectedFiles, setoriginalSelectedFiles] = useState([]);
 
     const { 
        register, 
@@ -51,7 +52,7 @@ export function ModalProductEdit({ open, onOpenChange,productId,onRefresh }) {
         setLoading(true);
         // La petición a Spring Boot se ejecuta JUSTO AQUÍ al hacer clic
         const data = await productService.getProductById(productId);
-        
+        setoriginalSelectedFiles(data.files);
         setSelectedFiles(data.files);
         const precioFormateado = data.precio ? parseFloat(data.precio).toFixed(2) : "0.00";
 
@@ -200,7 +201,40 @@ const handleBlurPrecio = (e) => {
         console.log('Producto creado:', newProduct);
         alert('¡Cambios guardados con éxito!');
 
-      } 
+      }else{
+        const removeFilesUniqueNames = originalSelectedFiles
+            .filter(file => !selectedFiles.includes(file))
+            .map(file => file.uniqueName);
+
+        const addFilesUniqueNames = selectedFiles
+            .filter(file => !originalSelectedFiles.includes(file))
+
+        const arregloDef = originalSelectedFiles.filter(r => !removeFilesUniqueNames.includes(r.uniqueName));
+
+
+        // 3. Solo llamar a la API de borrado si realmente hay archivos para eliminar
+        if (removeFilesUniqueNames.length > 0) {
+           const resul= await deleteMultipleImages(removeFilesUniqueNames);
+           console.log(resul);
+        }
+
+        if (addFilesUniqueNames.length >0){
+          const imagenesSubidas =  await uploadMultipleImagesAndGetUrls(addFilesUniqueNames, 'productos');
+          const arregloDeFilesNew = imagenesSubidas.map((imagen, index) => ({
+            url: imagen.url,    // 🔑 Extrae la URL pública del objeto
+            fileOrder: index,         // El primer archivo tendrá 0, el segundo 1, etc.
+            uniqueName: imagen.uniqueName // 🔑 Asigna el nombre único para poder borrarlo en el futuro
+          }));
+          arregloDeFilesNew.forEach(r=>{
+            arregloDef.push(r);
+          })
+        }
+
+        data.files=arregloDef;
+        const newProduct2 = await productService.updateProductById(productId,data);
+
+        console.log('Producto creado:', newProduct2);
+      }
         
     } catch (error) {
       console.error('Error al guardar:', error);

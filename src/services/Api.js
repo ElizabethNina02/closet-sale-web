@@ -16,7 +16,7 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     
     // MENSAJE DE CONTROL EN CONSOLA:
-    console.log(`[Axios] Petición enviada a: ${config.url}. Token encontrado:`, token);
+    //console.log(`[Axios] Petición enviada a: ${config.url}. Token encontrado:`, token);
 
     if (token && !config.url.includes('/auth')) {
       config.headers.Authorization = `Bearer ${token}`;

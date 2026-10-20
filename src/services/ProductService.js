@@ -12,7 +12,6 @@ export const productService = {
     return response.data; // Axios ya parsea el JSON automáticamente aquí
   },
 
-
   getProductById: async (id) => {
     const response = await api.get(`/products/${id}`);
     return response.data;
@@ -21,5 +20,10 @@ export const productService = {
   deleteProductById: async (id) =>{
     const response = await api.delete(`/products/${id}`);
     return response;
+  },
+
+  updateProductById: async (id,productData) => {
+    const response = await api.put(`/products/${id}`, productData);
+    return response.data;
   }
 };
