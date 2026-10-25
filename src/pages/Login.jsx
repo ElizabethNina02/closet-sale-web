@@ -31,6 +31,7 @@ function Login() {
     },
   });
 
+
   const onSubmit = async (data) => {
     setCargando(true);
 
@@ -38,6 +39,7 @@ function Login() {
       // Petición POST real a tu controlador de Spring Boot
       const response = await api.post("/auth/token", data);
       const { token, username } = response.data;
+
 
       if (token) {
         localStorage.setItem("token", token);
@@ -127,13 +129,14 @@ function Login() {
           {/* Se corrigió la orientación y se enlazó el botón "Regístrate" a tu ruta de registro */}
           <div className="flex w-full justify-between items-center gap-4">
             <Button
+              className="text-violet-700 hover:text-violet-800"
               type="button"
               variant="outline"
               onClick={() => navigate("/register")}
             >
               Regístrate
             </Button>
-            <Button type="submit" disabled={cargando} form="form-login">
+            <Button type="submit" className="bg-violet-700 hover:bg-violet-800" disabled={cargando} form="form-login">
               {cargando ? "Autenticando..." : "Ingresar"}
             </Button>
           </div>

@@ -14,6 +14,7 @@ import { XIcon } from "lucide-react";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "./ui/input-group";
 import { ScrollArea } from "./ui/scroll-area";
 import { deleteMultipleImages, uploadMultipleImagesAndGetUrls } from "@/services/StorageService";
+import { useAuth } from "@/context/AuthContext";
 
 
 export function ModalProductEdit({ open, onOpenChange,productId,onRefresh }) {
@@ -22,6 +23,8 @@ export function ModalProductEdit({ open, onOpenChange,productId,onRefresh }) {
     const [loading, setLoading] = useState(true);
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [originalSelectedFiles, setoriginalSelectedFiles] = useState([]);
+    
+    const { user } = useAuth();  
 
     const { 
        register, 
@@ -33,7 +36,7 @@ export function ModalProductEdit({ open, onOpenChange,productId,onRefresh }) {
     } = useForm({
       mode: "onBlur",
       defaultValues: {
-        vendedorId: 1,
+        vendedorId: user.id,
         titulo: '',
         condicion: '',
         descripcion: '', // 👈 DEBES AGREGARLA AQUÍ

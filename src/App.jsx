@@ -10,6 +10,7 @@ import Marketplace from './libs/Marketplace';
 import ProductDetail from './libs/ProductDetail';
 import { Toaster } from './components/ui/toast';
 import Register from './pages/Register';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   const location = useLocation();
@@ -24,7 +25,9 @@ function App() {
 
   return (
     <>
-        <Routes>
+
+    <AuthProvider>
+   <Routes>
         {/* 🔑 RUTA PÚBLICA: Cualquiera puede entrar al login sin token */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -44,6 +47,9 @@ function App() {
         />
       </Routes>
 
+
+    </AuthProvider>
+     
       <Toaster />
     </>
   )

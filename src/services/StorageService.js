@@ -78,3 +78,52 @@ export const deleteMultipleImages = async (uniqueNames, bucketName = 'productos'
     throw error;
   } 
 };
+
+
+
+/**
+ * Sube una sola imagen a Supabase Storage en el bucket 'users' y retorna su URL pública y nombre único.
+ * @param {File} file - Archivo binario de la imagen.
+ * @returns {Promise<{url: string, uniqueName: string}>} Objeto con la URL pública y el nombre único del archivo.
+ */
+export const uploadSingleUserImage = async (file) => {
+  const bucketName = 'users';
+  
+  try {
+    if (!file) {
+      throw new Error("No se proporcionó ningún archivo para subir.");
+    }
+
+    // Extraer extensión y limpiar el nombre original del archivo
+    const fileExtension = file.name.split('.').pop();
+    const cleanFileName = file.name.replace(`.${fileExtension}`, '').replace(/[^a-zA-Z0-9]/g, '_');
+    const uniqueName = `${Date.now()}_${cleanFileName}.${fileExtension}`;
+
+    // Subir archivo físico al bucket 'users'
+    const { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(uniqueName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(`Error de Supabase al subir ${file.name}: ${uploadError.message}`);
+    }
+
+    // Obtener la URL pública del archivo subido
+    const { data: publicUrlData } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(uniqueName);
+
+    // Retorna el objeto con la estructura que necesitas
+    return {
+      url: publicUrlData.publicUrl,
+      uniqueName: uniqueName // Útil para operaciones futuras como .remove([uniqueName])
+    };
+
+  } catch (error) {
+    console.error("Error en uploadSingleUserImage:", error);
+    throw error;
+  }
+};
