@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Marketplace from './libs/Marketplace';
 import ProductDetail from './libs/ProductDetail';
+import { Toaster } from './components/ui/toast';
+import Register from './pages/Register';
 
 function App() {
   const location = useLocation();
@@ -25,6 +27,7 @@ function App() {
         <Routes>
         {/* 🔑 RUTA PÚBLICA: Cualquiera puede entrar al login sin token */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* 🔒 RUTAS PROTEGIDAS: Se requiere token para acceder a todo lo que esté aquí dentro */}
         <Route element={<ProtectedRoute />}>
@@ -35,13 +38,13 @@ function App() {
             <Route path="marketplace/:id" element={<ProductDetail />} />
           </Route>
         </Route>
-
         <Route 
           path="*" 
           element={hasToken ? <Navigate to="/marketplace" replace /> : <Navigate to="/login" replace />} 
         />
       </Routes>
 
+      <Toaster />
     </>
   )
 }

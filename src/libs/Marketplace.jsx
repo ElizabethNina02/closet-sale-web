@@ -64,7 +64,7 @@ useEffect(() => {
               {/* Contenido de la Tarjeta */}
               <div className="px-6 p-4 pt-0">
                   <span className="font-extrabold text-lg text-indigo-600 dark:text-indigo-400">
-                    ${product.precio.toFixed(2)}
+                    S/{product.precio.toFixed(2)}
                   </span>
                   <div className="flex justify-between items-center mb-2">
                   <div className="font-bold text-xl text-slate-800 dark:text-slate-100">

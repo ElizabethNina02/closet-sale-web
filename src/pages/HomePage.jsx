@@ -1,7 +1,6 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import Banner from "./Banner";
 import { Outlet } from "react-router-dom";
 
 function HomePage() {
@@ -28,7 +27,6 @@ function HomePage() {
           </div>
         </main>
 
-        <Banner />
 
       </div>
     </div>
