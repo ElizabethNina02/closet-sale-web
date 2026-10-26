@@ -19,12 +19,15 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/context/AuthContext";
+import { departmentService } from "@/services/DepartmentService";
+import { districtService } from "@/services/DistrictService";
 import { uploadSingleUserImage } from "@/services/StorageService";
 import { userService } from "@/services/UserService";
 import { XIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
@@ -32,6 +35,43 @@ function Register() {
   const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
   const [selectedImage, setselectedImage] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [loadingDepartment, setLoadingDepartment] = useState([]);
+
+  const [districts, setDistricts] = useState([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+  // Función para cargar los distritos según el ID del departamento seleccionado
+  const handleDepartmentChange = async (departmentId, formOnChange) => {
+    // 1. Actualizamos el valor en el estado de React Hook Form
+    formOnChange(departmentId);
+    
+    // Opcional: Limpiamos el valor del distrito previo en el formulario si existiera
+    // setValue("districtId", ""); 
+
+    if (!departmentId) {
+      setDistricts([]);
+      return;
+    }
+
+    try {
+      setLoadingDistricts(true);
+      const data = await districtService.getDistrictsById(departmentId);
+          
+      const formattedCategories = data.map((district) => ({
+        label: district.name, 
+        value: String(district.id)
+      }));
+
+      setDistricts(formattedCategories); 
+    } catch (error) {
+      console.error("Error al cargar distritos:", error);
+      setDistricts([]);
+    } finally {
+      setLoadingDistricts(false);
+    }
+  };
+
 
   const handleRemoveFile = () => {
     setselectedImage(null);
@@ -74,8 +114,30 @@ function Register() {
     }
 };
 
+  useEffect(() => {
+      const fetchCategories = async () => {
+        try {
+          setLoadingDepartment(true);
+          const data = await departmentService.getAllDepartments();
+          
+          const formattedCategories = data.map((category) => ({
+            label: category.name, 
+            value: String(category.id)
+          }));
+  
+          setDepartments(formattedCategories);
+        } catch (error) {
+          // Axios guarda la respuesta del servidor en error.response
+          console.error("Error cargando categorías desde el servidor:", error.response?.data || error.message);
+        } finally {
+          setLoadingDepartment(false);
+        }
+      };
+  
+      fetchCategories();
+    }, []);
 
-const { login } = useAuth(); 
+  const { login } = useAuth(); 
 
   const onSubmit = async (data) => {
     setCargando(true);
@@ -296,6 +358,72 @@ const { login } = useAuth();
                         {errors.whatsappNumber.message}
                       </p>
                     )}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="departmentId"
+                control={control}
+                rules={{ required: "El número de Whatsapp es obligatoria" }}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="login-password">
+                      Ubicación
+                    </FieldLabel>
+                    <Select 
+                      // 🔑 SOLUCIÓN: Pasa el arreglo al componente raíz para que traduzca el VALUE a LABEL
+                      items={departments} 
+                      value={field.value || ""} 
+                      onValueChange={(value) => handleDepartmentChange(value, field.onChange)}
+                      disabled={loadingDepartment}
+                    >
+                      <SelectTrigger id="categoria-select" className="w-full">
+                        {/* Radix ahora buscará de forma segura en 'items' la etiqueta correcta */}
+                        <SelectValue placeholder="Selecciona una categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Categorías disponibles</SelectLabel>
+                          {departments.map((category) => (
+                            <SelectItem key={category.value} value={category.value}>
+                              {category.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              />
+              <Controller
+                name="districtId"
+                control={control}
+                rules={{ required: "El número de Whatsapp es obligatoria" }}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <Select 
+                      // 🔑 SOLUCIÓN: Pasa el arreglo al componente raíz para que traduzca el VALUE a LABEL
+                      items={districts} 
+                      value={field.value || ""} 
+                      onValueChange={field.onChange}
+                      disabled={loadingDistricts}
+                    >
+                      <SelectTrigger id="categoria-select" className="w-full">
+                        {/* Radix ahora buscará de forma segura en 'items' la etiqueta correcta */}
+                        <SelectValue placeholder="Selecciona un distrito" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Categorías disponibles</SelectLabel>
+                          {districts.map((category) => (
+                            <SelectItem key={category.value} value={category.value}>
+                              {category.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </Field>
                 )}
               />

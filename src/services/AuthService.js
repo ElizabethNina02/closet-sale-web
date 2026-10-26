@@ -14,6 +14,6 @@ export const loginService = async (username, password) => {
     throw new Error(errorData.message || "Credenciales incorrectas");
   }
 
-  // Spring Boot debe devolver un objeto como: { token: "eyJhbGci...", username: "..." }
-  return await response.json();
+  const data = await response.json(); 
+  return data;
 };

@@ -13,11 +13,13 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { useAuth } from "@/context/AuthContext";
 
 function Login() {
   const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
 
+const { login } = useAuth(); 
   // Desestructuramos "control" para que lo usen los componentes <Controller />
   const {
     control,
@@ -38,12 +40,12 @@ function Login() {
     try {
       // Petición POST real a tu controlador de Spring Boot
       const response = await api.post("/auth/token", data);
-      const { token, username } = response.data;
+      console.log(response.data);
+      const { user, auth } = response.data;
 
 
-      if (token) {
-        localStorage.setItem("token", token);
-        if (username) localStorage.setItem("username", username);
+      if (auth.token) {
+        login(user, auth.token)
         navigate("/");
       }
     } catch (err) {
