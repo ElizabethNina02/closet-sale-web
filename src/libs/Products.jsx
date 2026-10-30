@@ -101,7 +101,10 @@ useEffect(() => {
           open={isModalOpen} 
           onOpenChange = {(isOpen) => {
             setIsModalOpen(isOpen);
-            if (!isOpen) setSelectedProductId(null);
+            if (!isOpen){
+             setSelectedProductId(null);
+             
+            }
           }} 
           productId={selectedProductId} 
           onRefresh={fetchCategories} 

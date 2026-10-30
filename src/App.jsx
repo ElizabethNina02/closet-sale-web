@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Marketplace from './libs/Marketplace';
 import ProductDetail from './libs/ProductDetail';
+import Profile from './libs/Profile';
 import { Toaster } from './components/ui/toast';
 import Register from './pages/Register';
 import { AuthProvider } from './context/AuthContext';
@@ -39,6 +40,8 @@ function App() {
             <Route path="my-products" element={<Products />} />
             <Route path="marketplace" element={<Marketplace />} />
             <Route path="marketplace/:id" element={<ProductDetail />} />
+            <Route path="profile" element={<Profile />} />
+         
           </Route>
         </Route>
         <Route 

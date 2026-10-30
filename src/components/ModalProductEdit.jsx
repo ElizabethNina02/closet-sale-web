@@ -202,8 +202,10 @@ const handleBlurPrecio = (e) => {
         data.files=arregloDeFiles;
         const newProduct = await productService.createProduct(data);
         console.log('Producto creado:', newProduct);
-        alert('¡Cambios guardados con éxito!');
-
+        if (onRefresh) {
+          await onRefresh(); // El 'await' es opcional, por si fetchCategories es asíncrona
+        }
+        onOpenChange(false);
       }else{
         const removeFilesUniqueNames = originalSelectedFiles
             .filter(file => !selectedFiles.includes(file))
@@ -236,12 +238,16 @@ const handleBlurPrecio = (e) => {
         data.files=arregloDef;
         const newProduct2 = await productService.updateProductById(productId,data);
 
-        console.log('Producto creado:', newProduct2);
+        console.log('Producto actualizado:', newProduct2);
+        
+        if (onRefresh) {
+          await onRefresh(); // El 'await' es opcional, por si fetchCategories es asíncrona
+        }
+        onOpenChange(false);
       }
         
     } catch (error) {
       console.error('Error al guardar:', error);
-      alert('Hubo un error al guardar los cambios.');
     }
   };
 

@@ -24,6 +24,7 @@ import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/context/AuthContext";
 import { departmentService } from "@/services/DepartmentService";
 import { districtService } from "@/services/DistrictService";
+import { provinceService } from "@/services/ProvinceService";
 import { uploadSingleUserImage } from "@/services/StorageService";
 import { userService } from "@/services/UserService";
 import { XIcon } from "lucide-react";
@@ -38,8 +39,11 @@ function Register() {
   const [departments, setDepartments] = useState([]);
   const [loadingDepartment, setLoadingDepartment] = useState([]);
 
+  const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+
 
   // Función para cargar los distritos según el ID del departamento seleccionado
   const handleDepartmentChange = async (departmentId, formOnChange) => {
@@ -50,13 +54,43 @@ function Register() {
     // setValue("districtId", ""); 
 
     if (!departmentId) {
+      setProvinces([]);
+      return;
+    }
+
+    try {
+      setLoadingProvinces(true);
+      const data = await provinceService.getProvincesByDepartmentId(departmentId);
+          
+      const formattedCategories = data.map((province) => ({
+        label: province.name, 
+        value: String(province.id)
+      }));
+
+      setProvinces(formattedCategories); 
+    } catch (error) {
+      console.error("Error al cargar provincias:", error);
+      setProvinces([]);
+    } finally {
+      setLoadingProvinces(false);
+    }
+  };
+
+  const handleProvinceChange = async (provinceId, formOnChange) => {
+    // 1. Actualizamos el valor en el estado de React Hook Form
+    formOnChange(provinceId);
+    
+    // Opcional: Limpiamos el valor del distrito previo en el formulario si existiera
+    // setValue("districtId", ""); 
+
+    if (!provinceId) {
       setDistricts([]);
       return;
     }
 
     try {
       setLoadingDistricts(true);
-      const data = await districtService.getDistrictsById(departmentId);
+      const data = await districtService.getDistrictsByProvinceId(provinceId);
           
       const formattedCategories = data.map((district) => ({
         label: district.name, 
@@ -71,7 +105,6 @@ function Register() {
       setLoadingDistricts(false);
     }
   };
-
 
   const handleRemoveFile = () => {
     setselectedImage(null);
@@ -380,14 +413,46 @@ function Register() {
                     >
                       <SelectTrigger id="categoria-select" className="w-full">
                         {/* Radix ahora buscará de forma segura en 'items' la etiqueta correcta */}
-                        <SelectValue placeholder="Selecciona una categoría" />
+                        <SelectValue placeholder="Selecciona un departamento" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectLabel>Categorías disponibles</SelectLabel>
+                          <SelectLabel>Departamentos disponibles</SelectLabel>
                           {departments.map((category) => (
                             <SelectItem key={category.value} value={category.value}>
                               {category.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              />
+              <Controller
+                name="provinceId"
+                control={control}
+                rules={{ required: "El número de Whatsapp es obligatoria" }}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <Select 
+                      // 🔑 SOLUCIÓN: Pasa el arreglo al componente raíz para que traduzca el VALUE a LABEL
+                      items={provinces} 
+                      value={field.value || ""} 
+                      onValueChange={(value) => handleProvinceChange(value, field.onChange)}
+                      
+                      disabled={loadingProvinces}
+                    >
+                      <SelectTrigger id="categoria-select" className="w-full">
+                        {/* Radix ahora buscará de forma segura en 'items' la etiqueta correcta */}
+                        <SelectValue placeholder="Selecciona una provincia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Provincias disponibles</SelectLabel>
+                          {provinces.map((province) => (
+                            <SelectItem key={province.value} value={province.value}>
+                              {province.label}
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -415,7 +480,7 @@ function Register() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectLabel>Categorías disponibles</SelectLabel>
+                          <SelectLabel>Distritos disponibles</SelectLabel>
                           {districts.map((category) => (
                             <SelectItem key={category.value} value={category.value}>
                               {category.label}

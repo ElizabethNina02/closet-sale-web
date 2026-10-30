@@ -41,7 +41,7 @@ function DropdownProfile({
   const handleLogout = () => {
     // 1. Borramos las credenciales reales de Spring Boot
     localStorage.removeItem('token');
-    localStorage.removeItem('username');
+    localStorage.removeItem('user');
 
     // 2. Cerramos el menú desplegable
     setDropdownOpen(false);
@@ -85,16 +85,16 @@ function DropdownProfile({
         >
           <div className="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
             <div className="font-medium text-gray-800 dark:text-gray-100">{user.firstName} {user.lastName}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 italic">Administrator</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 italic">Administrador</div>
           </div>
           <ul>
             <li>
               <Link
                 className="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3"
-                to="/settings"
+                to="/profile"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
-                Settings
+                Perfil
               </Link>
             </li>
             <li>
@@ -103,7 +103,7 @@ function DropdownProfile({
                 to="/login"
                 onClick={handleLogout}
               >
-                Sign Out
+                Cerrar sesión
               </Link>
             </li>
           </ul>
